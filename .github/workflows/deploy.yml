@@ -1,0 +1,73 @@
+name: Deploy to Kubernetes
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        type: choice
+        description: Environment to deploy
+        required: true
+        options:
+        - qa
+        - preprod
+        - prod
+  workflow_call:
+    inputs:
+      env:
+        required: true
+        type: string
+        description: Environment to deploy
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set deployment variables
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          SHORT_SHA=$(echo ${GITHUB_SHA} | cut -c1-7)
+          TAG="sha-${SHORT_SHA}"
+
+          if [[ ${{ inputs.env }} = "prod" ]]
+          then
+            CLUSTER="prod-eks-cluster"
+            ENV="prod"
+            AK=${{ secrets.CONNECT_PROD_AWS_AK }}
+            SK=${{ secrets.CONNECT_PROD_AWS_SK }}
+          elif [[ ${{ inputs.env }} = "preprod" ]]
+          then
+            CLUSTER="preprod-eks-cluster"
+            ENV="preprod"
+            AK=${{ secrets.CONNECT_PREPROD_AWS_AK }}
+            SK=${{ secrets.CONNECT_PREPROD_AWS_SK }}
+          else
+            CLUSTER="qa-eks-cluster"
+            ENV="qa"
+            AK=${{ secrets.CONNECT_QA_AWS_AK }}
+            SK=${{ secrets.CONNECT_QA_AWS_SK }}
+          fi
+
+          echo "CLUSTER_NAME=${CLUSTER}" >> $GITHUB_ENV
+          echo "DEPLOY_ENV=${ENV}" >> $GITHUB_ENV
+          echo "DEPLOY_TAG=${TAG}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${AK}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${SK}" >> $GITHUB_ENV
+
+      - name: Connect to EKS
+        uses: wearephenix/action-eks-connect@v1
+        with:
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          eks-cluster-name: ${{ env.CLUSTER_NAME }}
+          kube-context-name: phenix-${{ env.DEPLOY_ENV }}
+
+      - name: Deploy to Kubernetes
+        working-directory: ./helm
+        run: IMAGE_TAG=${{ env.DEPLOY_TAG }} helmfile -e ${{ env.DEPLOY_ENV }} sync
