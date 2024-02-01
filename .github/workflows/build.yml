@@ -1,0 +1,64 @@
+name: Build Docker image
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+env:
+  IMAGE_NAME: gotenberg
+  IMAGE_NAMESPACE: phenix-connect
+
+jobs:
+
+  build-push:
+    name: build-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.CONNECT_QA_AWS_AK }}
+          aws-secret-access-key: ${{ secrets.CONNECT_QA_AWS_SK }}
+          aws-region: eu-west-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Process tag name
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          if [ $BRANCH = "main" ]
+          then
+            TAG="prod"
+          elif [ $BRANCH = "qa" ]
+          then
+            TAG="qa"
+          else
+            ENV="<<INVALID>>"
+          fi
+          echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4.1.1
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.IMAGE_NAMESPACE }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=raw, value=${{ env.IMAGE_TAG }}, enable=${{ !contains(env.IMAGE_TAG, '<<INVALID>>') }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3.2.0
+        with:
+          push: true
+          platforms: linux/amd64
+          context: .
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

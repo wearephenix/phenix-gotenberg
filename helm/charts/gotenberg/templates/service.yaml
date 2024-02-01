@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "fullName" .}}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kubeLabels" . | indent 2 }}
+spec:
+  ports:
+    - name: http
+      port: {{ .Values.servicePort }}
+      targetPort: http
+      protocol: TCP
+  selector:
+    {{- include "kubeLabels" . | indent 2 }}

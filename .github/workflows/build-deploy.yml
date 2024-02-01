@@ -1,0 +1,54 @@
+name: Build and deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [qa, main]
+
+jobs:
+
+  process-metadata:
+    name: process-metadata
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Process environment
+        id: process-env
+        run: |
+          BRANCH=${GITHUB_REF#refs/heads/}
+          if [[ $BRANCH = "main" ]]
+          then
+            ENV="prod"
+          elif [[ $BRANCH = "qa" ]]
+          then
+            ENV=qa
+          fi
+          echo "env=${ENV}" >> $GITHUB_OUTPUT
+    outputs:
+      env: ${{ steps.process-env.outputs.env }}
+
+  build:
+    name: build
+    needs: process-metadata
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  deploy:
+    name: deploy
+    needs: [process-metadata, build]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      env: ${{needs.process-metadata.outputs.env}}
+    secrets: inherit
+
+  deploy-preprod:
+    name: deploy-preprod
+    needs: [process-metadata, build]
+    uses: ./.github/workflows/deploy.yml
+    if: needs.process-metadata.outputs.env == 'prod'
+    with:
+      env: preprod
+    secrets: inherit
+
+

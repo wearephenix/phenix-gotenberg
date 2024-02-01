@@ -1,0 +1,25 @@
+releases:
+- name: gotenberg
+  namespace: connect
+  chart: ./charts/gotenberg
+  wait: true
+  values:
+    - "./{{ .Environment.Name }}/eu-west-1/values.yaml"
+  set:
+    - name: image.tag
+      value: {{ .Values.imageTag }}
+  missingFileHandler: Error
+
+environments:
+  qa:
+    values:
+      - imageTag: {{ env "IMAGE_TAG" | default "qa" }}
+    kubeContext: phenix-qa
+  preprod:
+    values:
+      - imageTag: {{ env "IMAGE_TAG" | default "prod" }}
+    kubeContext: phenix-preprod
+  prod:
+    values:
+      - imageTag: {{ env "IMAGE_TAG" | default "prod" }}
+    kubeContext: phenix-prod

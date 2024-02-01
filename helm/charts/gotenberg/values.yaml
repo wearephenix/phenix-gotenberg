@@ -1,0 +1,47 @@
+nameSuffix: ""
+env: qa
+
+image:
+  repository: 078891766685.dkr.ecr.eu-west-1.amazonaws.com/phenix-connect/gotenberg
+  pullPolicy: IfNotPresent
+  tag: "qa"
+
+##### Scaling #####
+resources:
+  limits:
+    cpu: 400m
+    memory: 1Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
+
+replicaCount: 1
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 70
+
+##### Misc Kubernetes #####
+securityContext:
+  privileged: false
+  runAsUser: 1001
+
+servicePort: 80
+
+##### Gotenberg config #####
+api:
+  port: 3000
+  disableHealthCheckLogging: true
+
+prometheus:
+  collectInterval: "1s"
+  disableCollect: false
+  disableRouterLogging: true
+
+logging:
+  format: "json"
+  level: "info"
+
+gracefulShutdownDurationSec: 30

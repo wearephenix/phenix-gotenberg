@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "fullName" .}}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kubeLabels" . | indent 2 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "kubeLabels" . | indent 4 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kubeLabels" . | indent 8 }}
+      annotations:
+        ad.datadoghq.com/{{ template "fullName" .}}.checks: |
+          {
+            "openmetrics": {
+              "instances": [
+                {
+                  "openmetrics_endpoint": "http://%%host%%:%%port%%/prometheus/metrics",
+                  "metrics": [
+                      {"gotenberg_chromium_requests_queue_size": "gotenberg.chromium_requests_queue_size"},
+                      {"gotenberg_chromium_restarts_count": "gotenberg.chromium_restarts_count"},
+                      {"gotenberg_libreoffice_requests_queue_size": "gotenberg.libreoffice_requests_queue_size"},
+                      {"gotenberg_libreoffice_restarts_count": "gotenberg.libreoffice_restarts_count"}
+                  ]
+                }
+              ]
+            }
+          }   
+    spec:
+      containers:
+        - name: {{ template "fullName" .}}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - gotenberg
+          - --api-port={{ .Values.api.port }}
+          {{- if .Values.api.disableHealthCheckLogging }}
+          - --api-disable-health-check-logging
+          {{- end }}
+          - --prometheus-collect-interval={{ .Values.prometheus.collectInterval }}
+          {{- if .Values.prometheus.disableCollect }}
+          - --prometheus-disable-collect
+          {{- end }}
+          {{- if .Values.prometheus.disableRouterLogging }}
+          - --prometheus-disable-route-logging
+          {{- end }}
+          - --log-format={{ .Values.logging.format }}
+          - --log-level={{ .Values.logging.level }}
+          - --gotenberg-graceful-shutdown-duration={{ .Values.gracefulShutdownDurationSec }}s
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      terminationGracePeriodSeconds: {{ .Values.gracefulShutdownDurationSec }}
+
