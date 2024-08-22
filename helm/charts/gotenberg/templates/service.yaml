@@ -5,11 +5,15 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "kubeLabels" . | indent 2 }}
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "gotenberg.{{ .Values.env }}.wearephenix.internal"
 spec:
+  type: NodePort
   ports:
     - name: http
       port: {{ .Values.servicePort }}
       targetPort: http
       protocol: TCP
+      nodePort: 30000
   selector:
     {{- include "kubeLabels" . | indent 2 }}
