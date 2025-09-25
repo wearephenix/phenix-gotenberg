@@ -43,6 +43,6 @@ prometheus:
 
 logging:
   format: "json"
-  level: "debug"
+  level: "info"
 
 gracefulShutdownDurationSec: 30
