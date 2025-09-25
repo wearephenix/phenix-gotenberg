@@ -34,6 +34,7 @@ servicePort: 80
 api:
   port: 3000
   disableHealthCheckLogging: true
+  timeoutSec: 120
 
 prometheus:
   collectInterval: "1s"
@@ -45,5 +46,3 @@ logging:
   level: "info"
 
 gracefulShutdownDurationSec: 30
-api:
-  timeoutSec: 120
