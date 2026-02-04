@@ -9,16 +9,16 @@ image:
 ##### Scaling #####
 resources:
   limits:
+    cpu: "2"
+    memory: 8Gi
+  requests:
     cpu: "1"
     memory: 4Gi
-  requests:
-    cpu: 500m
-    memory: 2Gi
 
-replicaCount: 2
+replicaCount: 1
 autoscaling:
   enabled: false
-  minReplicas: 2
+  minReplicas: 1
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 70
