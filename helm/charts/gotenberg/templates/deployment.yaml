@@ -6,6 +6,8 @@ metadata:
   labels:
     {{- include "kubeLabels" . | indent 2 }}
 spec:
+  # Old ReplicaSets are only kept for kubectl rollout undo; each one costs monitoring series.
+  revisionHistoryLimit: 3
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
